@@ -1,78 +1,110 @@
-const config     = require('./config');
-const express    = require('express');
-const bodyParser = require('body-parser');
-const twilio     = require('twilio');
-const ngrok      = require('ngrok');
-
-const app = new express();
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
-
-app.post('/token/:identity', (request, response) => {
-  const identity = request.params.identity;
-  const accessToken = new twilio.jwt.AccessToken(config.twilio.accountSid, config.twilio.apiKey, config.twilio.apiSecret);
-  const chatGrant = new twilio.jwt.AccessToken.ChatGrant({
-    serviceSid: config.twilio.chatServiceSid,
-  });
-  accessToken.addGrant(chatGrant);
-  accessToken.identity = identity;
-  response.set('Content-Type', 'application/json');
-  response.send(JSON.stringify({
-    token: accessToken.toJwt(),
-    identity: identity
-  }));
-})
-
-app.listen(config.port, () => {
-  console.log(`Application started at localhost:${config.port}`);
-});
+require("dotenv").config();
+const { v4: uuidv4 } = require("uuid");
+const AccessToken = require("twilio").jwt.AccessToken;
+const VideoGrant = AccessToken.VideoGrant;
+const ChatGrant = AccessToken.ChatGrant;
+const express = require("express");
+const cors = require('cors')
+const app = express();
+const port = 5000;
 
 
-// ============================================
-// ============================================
-// ====== HANDLE NEW-CONVERSATION HOOK ========
-// ============================================
-// ============================================
-let client = new twilio(config.twilio.accountSid, config.twilio.authToken);
+app.use(cors())
+// use the Express JSON middleware
+app.use(express.json());
 
-app.post('/chat', (req, res) => {
-  console.log("Received a webhook:", req.body);
-  if (req.body.EventType === 'onConversationAdded') {
-    const me = "Tackleton";
-    client.conversations.v1.conversations(req.body.ConversationSid)
-      .participants
-      .create({
-          identity: me
-        })
-      .then(participant => console.log(`Added ${participant.identity} to ${req.body.ConversationSid}.`))
-      .catch(err => console.error(`Failed to add a member to ${req.body.ConversationSid}!`, err));
-  }
+// create the twilioClient
+const twilioClient = require("twilio")(
+    process.env.TWILIO_API_KEY_SID,
+    process.env.TWILIO_API_KEY_SECRET,
+    { accountSid: process.env.TWILIO_ACCOUNT_SID }
+);
 
-  console.log("(200 OK!)");
-  res.sendStatus(200);
-});
-
-app.post('/outbound-status', (req, res) => {
-  console.log(`Message ${req.body.SmsSid} to ${req.body.To} is ${req.body.MessageStatus}`);
-  res.sendStatus(200);
-})
-
-app.use((error, req, res, next) => {
-  res.status(500)
-  res.send({error: error})
-  console.error(error.stack)
-  next(error)
-})
-
-var ngrokOptions = {
-  proto: 'http',
-  addr: config.port
+const addParticipant = async (username, conversationSid) => {
+  const participant = await twilioClient.conversations.conversations(conversationSid)
+      .participants.create({ identity: username });
+  console.log(`add participant ${JSON.stringify(participant)}`);
 };
 
-if (config.ngrokSubdomain) {
-  ngrokOptions.subdomain = config.ngrokSubdomain
-}
+const createConversation = async (username, roomName) => {
+  if (roomName && username) {
+    const conversation = await twilioClient.conversations.conversations
+        .create({ friendlyName: roomName });
+    console.log(`create conversation ${JSON.stringify(conversation)}`);
+    const participant = await twilioClient.conversations.conversations(conversation.sid)
+        .participants.create({ identity: username })
+    console.log(`create participant ${JSON.stringify(participant)}`);
+  } else {
+    console.log(`kosong ${JSON.stringify(roomName + ' ' +username)}`);
+    throw error;
+  }
+};
 
-ngrok.connect(ngrokOptions).then(url => {
-  console.log('ngrok url is ' + url);
-}).catch(console.error);
+const findOrCreateRoom = async (username, roomName, conversationSid) => {
+  try {
+    // see if the room exists already. If it doesn't, this will throw
+    // error 20404.
+    const room = await twilioClient.video.rooms(roomName).fetch();
+    console.log(`room ${JSON.stringify(room)}`);
+    const participant = await addParticipant(username, conversationSid);
+    console.log(`participant ${JSON.stringify(participant)}`);
+  } catch (error) {
+    // the room was not found, so create it
+    if (error.code == 20404) {
+      await twilioClient.video.rooms.create({
+        uniqueName: roomName,
+        type: "go",
+      });
+      await createConversation(username, roomName);
+    } else {
+      // let other errors bubble up
+      throw error;
+    }
+  }
+};
+
+const getAccessToken = (roomName, username) => {
+  // create an access token
+  const token = new AccessToken(
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_API_KEY_SID,
+      process.env.TWILIO_API_KEY_SECRET,
+      // generate a random unique identity for this participant
+      { identity: username }
+  );
+  // create a video grant for this specific room
+  const videoGrant = new VideoGrant({
+    room: roomName,
+  });
+  const chatGrant = new ChatGrant({
+    serviceSid: process.env.DEFAULT_CONVERSATIONS_SERVICE_SID,
+  });
+
+  // add the video grant
+  token.addGrant(videoGrant);
+  token.addGrant(chatGrant);
+  // serialize the token and return it
+  return token.toJwt();
+};
+
+app.post("/join-room", async (req, res) => {
+  // return 400 if the request has an empty body or no roomName
+  if (!req.body || !req.body.roomName) {
+    return res.status(400).send("Must include roomName argument.");
+  }
+  const roomName = req.body.roomName;
+  const username = uuidv4();
+  const conversationSid = req.body.conversationSid;
+  // find or create a room with the given roomName
+  await findOrCreateRoom(username, roomName, conversationSid);
+  // generate an Access Token for a participant in this room
+  const token = getAccessToken(roomName, username);
+  res.send({
+    token: token,
+  });
+});
+
+// Start the Express server
+app.listen(port, () => {
+  console.log(`Express server running on port ${port}`);
+});

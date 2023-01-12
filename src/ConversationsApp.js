@@ -10,6 +10,7 @@ import Conversation from "./Conversation";
 import LoginPage from "./LoginPage";
 import { ConversationsList } from "./ConversationsList";
 import { HeaderItem } from "./HeaderItem";
+import VideoCall from "./VideoCall";
 
 const { Content, Sider, Header } = Layout;
 const { Text } = Typography;
@@ -19,10 +20,12 @@ class ConversationsApp extends React.Component {
     super(props);
 
     const name = localStorage.getItem("name") || "";
+    const conversationSid = localStorage.getItem("conversationSid") || "";
     const loggedIn = name !== "";
 
     this.state = {
       name,
+      conversationSid,
       loggedIn,
       token: null,
       statusString: null,
@@ -33,17 +36,20 @@ class ConversationsApp extends React.Component {
     };
   }
 
-  componentDidMount = () => {
+  componentDidMount = async () => {
     if (this.state.loggedIn) {
-      this.getToken();
+      await this.getToken();
       this.setState({ statusString: "Fetching credentials…" });
     }
   };
 
-  logIn = (name) => {
+  logIn = (name, conversationSid) => {
     if (name !== "") {
       localStorage.setItem("name", name);
-      this.setState({ name, loggedIn: true }, this.getToken);
+      if (conversationSid !== "") {
+        localStorage.setItem("", conversationSid);
+      }
+      this.setState({ name, conversationSid, loggedIn: true }, this.getToken);
     }
   };
 
@@ -54,6 +60,7 @@ class ConversationsApp extends React.Component {
 
     this.setState({
       name: "",
+      conversationSid: "",
       loggedIn: false,
       token: "",
       conversationsReady: false,
@@ -63,14 +70,31 @@ class ConversationsApp extends React.Component {
     });
 
     localStorage.removeItem("name");
+    localStorage.removeItem("conversationSid");
     this.conversationsClient.shutdown();
+    window.location.reload();
   };
 
-  getToken = () => {
+  getToken = async () => {
     // Paste your unique Chat token function
-    const myToken = "<Your token here>";
+    const myToken = await this.token();
     this.setState({ token: myToken }, this.initConversations);
   };
+
+  token = async () => {
+    const {name, conversationSid} = this.state;
+    console.log('hit token conv sid', conversationSid);
+    const response = await fetch("http://localhost:5000/join-room", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        'Content-Type': 'application/json; charset=UTF-8'
+      },
+      body: JSON.stringify({roomName: name, conversationSid: conversationSid}),
+    });
+    const {token} = await response.json();
+    return token;
+  }
 
   initConversations = async () => {
     window.conversationsClient = ConversationsClient;
@@ -207,6 +231,17 @@ class ConversationsApp extends React.Component {
               </Content>
             </Layout>
           </Layout>
+          {(this.state.name && this.state.token && this.state.loggedIn) ? <VideoCall
+              style={{
+                maxWidth: "250px",
+                width: "100%",
+                display: "flex",
+                alignItems: "center"
+              }}
+              loggedIn={this.state.loggedIn}
+              roomName={this.state.name}
+              token={this.state.token}/> : null}
+
         </div>
       );
     }

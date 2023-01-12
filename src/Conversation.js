@@ -86,6 +86,7 @@ class Conversation extends Component {
   };
 
   onDrop = acceptedFiles => {
+    console.log("accepted files ", acceptedFiles);
     this.state.conversationProxy.sendMessage({contentType: acceptedFiles[0].type, media: acceptedFiles[0]});
   };
 
