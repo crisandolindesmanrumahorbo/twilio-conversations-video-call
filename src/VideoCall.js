@@ -48,11 +48,27 @@ class VideoCall extends React.Component {
         room.participants.forEach(this.handleConnectedParticipant);
         room.on("participantConnected", this.handleConnectedParticipant);
 
+        /*
+            when sales (one of participant in this code)
+            click button logout, will change the room status to complete (the room not accessible or end)
+            https://www.twilio.com/docs/video/api/rooms-resource#complete-room
+            room will disconnect. Error code 53118 is identifier room is completed.
+         */
+        room.on("disconnected", this.handleRoomState);
+
         // handle cleanup when a participant disconnects
         room.on("participantDisconnected", this.handleDisconnectedParticipant);
         window.addEventListener("pagehide", () => room.disconnect());
         window.addEventListener("beforeunload", () => room.disconnect());
     };
+
+    handleRoomState = (room, error) => {
+        console.log('room ', JSON.stringify(room));
+        console.log('error ', JSON.stringify(error));
+        if (error.code === 53118) {
+            console.log(error.message);
+        }
+    }
 
     handleConnectedParticipant = (participant) => {
         // create a div for this participant's tracks

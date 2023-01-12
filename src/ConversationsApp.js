@@ -53,7 +53,17 @@ class ConversationsApp extends React.Component {
     }
   };
 
-  logOut = (event) => {
+  logOut = async (event) => {
+    const response = await fetch("http://localhost:5000/room-complete", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        'Content-Type': 'application/json; charset=UTF-8'
+      },
+      body: JSON.stringify({roomName: this.state.name}),
+    });
+    console.log('status room ', JSON.stringify(response));
+
     if (event) {
       event.preventDefault();
     }
@@ -206,7 +216,7 @@ class ConversationsApp extends React.Component {
                 <HeaderItem>
                   <Icon
                     type="poweroff"
-                    onClick={this.logOut}
+                    onClick={async () => await this.logOut()}
                     style={{
                       color: "white",
                       fontSize: "20px",

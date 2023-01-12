@@ -104,6 +104,28 @@ app.post("/join-room", async (req, res) => {
   });
 });
 
+app.post("/room-complete", async (req, res) => {
+  // return 400 if the request has an empty body or no roomName
+  if (!req.body || !req.body.roomName) {
+    return res.status(400).send("Must include roomName argument.");
+  }
+  const roomName = req.body.roomName;
+  const room = await getRoomByUniqueName(roomName);
+  const status = (await completeRoom(room.sid)).status;
+  res.send({
+    status: status,
+  });
+});
+
+const getRoomByUniqueName = async (roomName) => {
+  return await twilioClient.video.rooms(roomName).fetch();
+}
+
+const completeRoom = async (roomSid) => {
+  return await twilioClient.video.rooms(roomSid)
+      .update({status: 'completed'});
+}
+
 // Start the Express server
 app.listen(port, () => {
   console.log(`Express server running on port ${port}`);
