@@ -32,7 +32,7 @@ class VideoCall extends React.Component {
         } else {
             console.log('Not Available');
         }
-        const {name, token, loggedIn} = this.state;
+        const {name, token} = this.state;
         await this.startRoom(name, token);
     }
 
