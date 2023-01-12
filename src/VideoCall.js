@@ -1,7 +1,7 @@
 import Video from 'twilio-video';
 import React from 'react';
 import RecordRTC, {invokeSaveAsDialog} from 'recordrtc';
-import {Button} from "antd";
+import {Button} from 'antd';
 
 const container = document.getElementById("video-container");
 
@@ -142,7 +142,7 @@ class VideoCall extends React.Component {
 
             const recorder = RecordRTC([screen, audio, audioStream], {
                 type: 'video',
-                mimeType: 'video/webm',
+                mimeType: 'video/webm;codecs=h264',
                 video: {width: 854, height: 480}
             });
             console.log('screen', screen);
@@ -185,11 +185,11 @@ class VideoCall extends React.Component {
         return (
             <div>
                 <Button
-                    type="click"
+                    type="primary"
                     onClick={async (event) => await this.startRecord(event)}>Start Record
                 </Button>
-                <Button type="click" onClick={() => this.stopRecord()}>Stop Record</Button>
-                <Button type="click" onClick={() => this.save()}>Save</Button>
+                <Button type="primary" onClick={() => this.stopRecord()}>Stop Record</Button>
+                <Button type="primary" onClick={() => this.save()}>Save</Button>
             </div>
 
         );
