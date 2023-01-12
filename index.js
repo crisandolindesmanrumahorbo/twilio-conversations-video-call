@@ -110,8 +110,10 @@ app.post("/room-complete", async (req, res) => {
     return res.status(400).send("Must include roomName argument.");
   }
   const roomName = req.body.roomName;
+  const conversationSid = req.body.conversationSid;
   const room = await getRoomByUniqueName(roomName);
   const status = (await completeRoom(room.sid)).status;
+  await deleteConversations(conversationSid);
   res.send({
     status: status,
   });
@@ -124,6 +126,12 @@ const getRoomByUniqueName = async (roomName) => {
 const completeRoom = async (roomSid) => {
   return await twilioClient.video.rooms(roomSid)
       .update({status: 'completed'});
+}
+
+const deleteConversations = async (conversationSid) => {
+  console.log('conversationSid', conversationSid);
+  const a = await twilioClient.conversations.conversations(conversationSid).remove();
+  console.log('conversationSid', a);
 }
 
 // Start the Express server

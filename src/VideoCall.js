@@ -67,6 +67,10 @@ class VideoCall extends React.Component {
         console.log('error ', JSON.stringify(error));
         if (error.code === 53118) {
             console.log(error.message);
+            window.location.reload();
+            localStorage.removeItem("name");
+            localStorage.removeItem("conversationSid");
+            room.disconnect();
         }
     }
 

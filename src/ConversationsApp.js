@@ -60,7 +60,7 @@ class ConversationsApp extends React.Component {
         Accept: "application/json",
         'Content-Type': 'application/json; charset=UTF-8'
       },
-      body: JSON.stringify({roomName: this.state.name}),
+      body: JSON.stringify({roomName: this.state.name, conversationSid: this.state.conversationSid}),
     });
     console.log('status room ', JSON.stringify(response));
 
