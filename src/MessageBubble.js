@@ -25,7 +25,7 @@ class MessageBubble extends Component {
       this.props.message.media
         .getContentTemporaryUrl()
         .then((url) => {
-          this.setState({ mediaUrl: url });
+          this.setState({ mediaUrl: url }, ()=> console.log('media url ', url));
         })
         .catch((e) => this.setState({ mediaDownloadFailed: true }));
     }
@@ -51,11 +51,13 @@ class MessageBubble extends Component {
 
     const m = this.props.message;
     const type = this.state.type;
+    const {contentType} = m.media.state;
 
     if (this.state.hasMedia) {
       console.log("Message is media message");
       // log media properties
       console.log("Media properties", m.media);
+      console.log("Media properties state", m.media.state);
     }
     console.log(m);
     return (
@@ -79,6 +81,7 @@ class MessageBubble extends Component {
                 <Media
                   hasFailed={this.state.mediaDownloadFailed}
                   url={this.state.mediaUrl}
+                  contentType={contentType}
                 />
               )}
             </div>
@@ -95,22 +98,25 @@ class MessageBubble extends Component {
 
 class Media extends PureComponent {
   render = () => {
-    const { hasFailed, url } = this.props;
+    const { hasFailed, url, contentType } = this.props;
     return (
       <div
         className={`${styles.media}${!url ? " " + styles.placeholder : ""}`}
-        onClick={() => {
-          Modal.info({
-            centered: true,
-            icon: null,
-            okText: "Close",
-            width: "60%",
-            content: (
-              <div className={styles.picture_container}>
-                <img style={{ width: "100%", height: "100%" }} src={url} />
-              </div>
-            )
-          });
+        onClick={() =>
+        {
+          if (contentType.includes('image')) {
+            Modal.info({
+              centered: true,
+              icon: null,
+              okText: "Close",
+              width: "60%",
+              content: (
+                  <div className={styles.picture_container}>
+                    <img style={{ width: "100%", height: "100%" }} src={url} />
+                  </div>
+              )
+            });
+          }
         }}
       >
         {!url && !hasFailed && <Spin />}
@@ -123,15 +129,20 @@ class Media extends PureComponent {
         )}
 
         {!hasFailed && url && (
-          <div className={styles.media_icon}>
-            <div style={{ zIndex: 123, position: "absolute" }}>
-              <Icon type={"eye"} style={{ fontSize: "5em", opacity: 0.3 }} />
+            <div>
+              {contentType.includes('image') ?
+                  <div className={styles.media_icon}>
+                    <div style={{ zIndex: 123, position: "absolute" }}>
+                      <Icon type={"eye"} style={{ fontSize: "5em", opacity: 0.3 }} />
+                    </div>
+                    <div
+                        className={styles.picture_preview}
+                        style={{ backgroundImage: `url(${url})`, zIndex: 122 }}
+                    ></div>
+                  </div> : <a target="_blank" rel="noopener noreferrer" href={url}>open</a>
+              }
             </div>
-            <div
-              className={styles.picture_preview}
-              style={{ backgroundImage: `url(${url})`, zIndex: 122 }}
-            ></div>
-          </div>
+
         )}
       </div>
     );

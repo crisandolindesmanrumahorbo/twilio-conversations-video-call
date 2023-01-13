@@ -91,10 +91,11 @@ class Conversation extends Component {
   };
 
   render = () => {
+      const accept = ["application/*", "image/*"];
     return (
         <Dropzone
             onDrop={this.onDrop}
-            accept="image/*">
+            accept={accept}>
           {({getRootProps, getInputProps, isDragActive}) => (
               <div
                   {...getRootProps()}

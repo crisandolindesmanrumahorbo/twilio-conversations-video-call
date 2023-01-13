@@ -21,9 +21,14 @@ const twilioClient = require("twilio")(
 );
 
 const addParticipant = async (username, conversationSid) => {
-  const participant = await twilioClient.conversations.conversations(conversationSid)
-      .participants.create({ identity: username });
-  console.log(`add participant ${JSON.stringify(participant)}`);
+  try {
+    const participant = await twilioClient.conversations.conversations(conversationSid)
+        .participants.create({ identity: username });
+    console.log(`add participant ${JSON.stringify(participant)}`);
+  } catch (error) {
+    console.log(`error ${JSON.stringify(error)}`);
+  }
+
 };
 
 const createConversation = async (username, roomName) => {
@@ -34,6 +39,7 @@ const createConversation = async (username, roomName) => {
     const participant = await twilioClient.conversations.conversations(conversation.sid)
         .participants.create({ identity: username })
     console.log(`create participant ${JSON.stringify(participant)}`);
+    return conversation.sid;
   } else {
     console.log(`kosong ${JSON.stringify(roomName + ' ' +username)}`);
     throw error;
@@ -55,7 +61,7 @@ const findOrCreateRoom = async (username, roomName, conversationSid) => {
         uniqueName: roomName,
         type: "go",
       });
-      await createConversation(username, roomName);
+      return await createConversation(username, roomName);
     } else {
       // let other errors bubble up
       throw error;
@@ -96,11 +102,13 @@ app.post("/join-room", async (req, res) => {
   const username = uuidv4();
   const conversationSid = req.body.conversationSid;
   // find or create a room with the given roomName
-  await findOrCreateRoom(username, roomName, conversationSid);
+  const conversationSidCreated = await findOrCreateRoom(username, roomName, conversationSid);
+  console.log('conversation', conversationSidCreated)
   // generate an Access Token for a participant in this room
   const token = getAccessToken(roomName, username);
   res.send({
     token: token,
+    conversationSidCreated: conversationSidCreated,
   });
 });
 
@@ -130,8 +138,8 @@ const completeRoom = async (roomSid) => {
 
 const deleteConversations = async (conversationSid) => {
   console.log('conversationSid', conversationSid);
-  const a = await twilioClient.conversations.conversations(conversationSid).remove();
-  console.log('conversationSid', a);
+  const isDeleted = await twilioClient.conversations.conversations(conversationSid).remove();
+  console.log('conversationSid', isDeleted);
 }
 
 // Start the Express server

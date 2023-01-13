@@ -47,7 +47,7 @@ class ConversationsApp extends React.Component {
     if (name !== "") {
       localStorage.setItem("name", name);
       if (conversationSid !== "") {
-        localStorage.setItem("", conversationSid);
+        localStorage.setItem("conversationSid", conversationSid);
       }
       this.setState({ name, conversationSid, loggedIn: true }, this.getToken);
     }
@@ -87,8 +87,11 @@ class ConversationsApp extends React.Component {
 
   getToken = async () => {
     // Paste your unique Chat token function
-    const myToken = await this.token();
-    this.setState({ token: myToken }, this.initConversations);
+    const {token, conversationSidCreated} = await this.token();
+    if (conversationSidCreated) {
+      localStorage.setItem("conversationSid", conversationSidCreated);
+    }
+    this.setState({ token: token,  conversationSid: conversationSidCreated}, this.initConversations);
   };
 
   token = async () => {
@@ -102,8 +105,8 @@ class ConversationsApp extends React.Component {
       },
       body: JSON.stringify({roomName: name, conversationSid: conversationSid}),
     });
-    const {token} = await response.json();
-    return token;
+    const {token, conversationSidCreated} = await response.json();
+    return {token, conversationSidCreated};
   }
 
   initConversations = async () => {
