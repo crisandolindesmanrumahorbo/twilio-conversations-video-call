@@ -51,7 +51,10 @@ class MessageBubble extends Component {
 
     const m = this.props.message;
     const type = this.state.type;
-    const {contentType} = m.media.state;
+    let contentType = '';
+    if (m.media !== null) {
+      contentType = m.media.state.contentType;
+    }
 
     if (this.state.hasMedia) {
       console.log("Message is media message");
